@@ -12,6 +12,8 @@ Descripción: Dashboard de ventas con datos cargados desde OneDrive
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import requests
+from io import BytesIO
 
 
 # ============================================
@@ -40,8 +42,19 @@ def cargar_datos():
         "202311383_alu_comillas_edu/IQCqNXPhqCzATYQM3EQ-g8omAd-56utwdSDM91rvmZWb2bY"
     )
 
-    df1 = pd.read_excel(url_parte_1, parse_dates=["date"])
-    df2 = pd.read_excel(url_parte_2, parse_dates=["date"])
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    # Descargar parte 1
+    r1 = requests.get(url_parte_1, headers=headers)
+    r1.raise_for_status()
+    df1 = pd.read_excel(BytesIO(r1.content), parse_dates=["date"])
+
+    # Descargar parte 2
+    r2 = requests.get(url_parte_2, headers=headers)
+    r2.raise_for_status()
+    df2 = pd.read_excel(BytesIO(r2.content), parse_dates=["date"])
 
     df = pd.concat([df1, df2], ignore_index=True)
     df = df.sort_values("date")
@@ -54,6 +67,7 @@ def cargar_datos():
     df["onpromotion"] = df["onpromotion"].fillna(0).astype(int)
 
     return df
+
 
 
 df = cargar_datos()
