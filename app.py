@@ -409,21 +409,25 @@ def pestaña_4(df):
     st.markdown("---")
 
     # ======================================================
-    # 5. EVOLUCIÓN Y CRECIMIENTO INTERANUAL
+    # 5. EVOLUIÓN Y CRECIMIENTO INTERANUAL
     # ======================================================
     st.subheader("📈 Evolución y crecimiento interanual de ventas")
 
     ventas_year = (
         df.groupby("year")["sales"]
         .sum()
-        .sort_values()
         .reset_index()
     )
+
+    # 🔴 CLAVE: asegurar tipo numérico y orden correcto
+    ventas_year["year"] = ventas_year["year"].astype(int)
+    ventas_year = ventas_year.sort_values("year")
 
     ventas_year["crecimiento_%"] = ventas_year["sales"].pct_change() * 100
 
     col1, col2 = st.columns(2)
 
+    # -------- Ventas por año --------
     fig_sales = px.line(
         ventas_year,
         x="year",
@@ -431,15 +435,30 @@ def pestaña_4(df):
         markers=True,
         title="Ventas totales por año"
     )
+
+    fig_sales.update_layout(
+        xaxis_title="Año",
+        yaxis_title="Ventas",
+        xaxis=dict(type="linear")  # 👈 fuerza eje continuo
+    )
+
     col1.plotly_chart(fig_sales, use_container_width=True)
 
+    # -------- Crecimiento interanual --------
     fig_growth = px.bar(
         ventas_year.dropna(),
         x="year",
         y="crecimiento_%",
         title="Crecimiento interanual (%)"
     )
+
+    fig_growth.update_layout(
+        xaxis_title="Año",
+        yaxis_title="Crecimiento %",
+    )
+
     col2.plotly_chart(fig_growth, use_container_width=True)
+
 
 # ========================================================
 # CREAR LAS PESTAÑAS
