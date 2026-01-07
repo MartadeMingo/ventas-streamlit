@@ -14,6 +14,9 @@ import pandas as pd
 import plotly.express as px
 import requests
 from io import BytesIO
+import gdown
+import os
+from pathlib import Path
 
 
 # ============================================
@@ -29,35 +32,34 @@ st.set_page_config(
 # ============================================
 # FUNCIÓN PARA CARGAR LOS DATOS DESDE ONEDRIVE
 # ============================================
-
-import gdown
-import pandas as pd
-import streamlit as st
-
 @st.cache_data
 def cargar_datos():
-    # Enlaces gdown
+    tmp_dir = Path("temp_data")
+    tmp_dir.mkdir(exist_ok=True)
+
     url_parte_1 = "https://drive.google.com/uc?id=15mT4W0wzB0z-RAINsaCOQTSysB5uOe9x"
     url_parte_2 = "https://drive.google.com/uc?id=1xNusnLXVuRnZj_znJhvvvuwAe9lbMvar"
 
-    # Descarga los archivos si no existen localmente
-    archivo1 = "parte_1.csv"
-    archivo2 = "parte_2.csv"
+    archivo1 = tmp_dir / "parte_1.csv"
+    archivo2 = tmp_dir / "parte_2.csv"
 
-    gdown.download(url_parte_1, archivo1, quiet=False)
-    gdown.download(url_parte_2, archivo2, quiet=False)
+    if not archivo1.exists():
+        gdown.download(url_parte_1, str(archivo1), quiet=False)
+    if not archivo2.exists():
+        gdown.download(url_parte_2, str(archivo2), quiet=False)
 
-    # Leer CSV
-    df1 = pd.read_csv(archivo1, sep=";", engine="python")
-    df2 = pd.read_csv(archivo2, sep=";", engine="python")
+    # Leer CSV correctamente
+    df1 = pd.read_csv(archivo1, sep=",", engine="python", skipinitialspace=True)
+    df2 = pd.read_csv(archivo2, sep=",", engine="python", skipinitialspace=True)
 
-    # Normalizar nombres de columnas
+    # Limpiar nombres de columnas
     df1.columns = df1.columns.str.strip().str.lower()
     df2.columns = df2.columns.str.strip().str.lower()
 
     # Concatenar
     df = pd.concat([df1, df2], ignore_index=True)
 
+    # Eliminar columna extra si existe
     if "unnamed: 0" in df.columns:
         df = df.drop(columns=["unnamed: 0"])
 
@@ -67,7 +69,6 @@ def cargar_datos():
     df["onpromotion"] = df["onpromotion"].fillna(0).astype(int)
 
     return df
-
 
 
 
