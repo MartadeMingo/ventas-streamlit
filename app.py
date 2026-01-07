@@ -241,11 +241,29 @@ def pestaña_3(df):
 # ========================================================
 def pestaña_4(df):
 
+    import streamlit as st
+    import plotly.express as px
+
     st.title("🚀 Insights Clave para Dirección")
 
     st.markdown(
         "Panel ejecutivo orientado a la toma de decisiones estratégicas del CEO y del Director de Ventas."
     )
+
+    # ======================================================
+    # FUNCIÓN PARA ABREVIAR NOMBRES DE ESTADOS
+    # ======================================================
+    def abreviar_estado(nombre):
+        if len(nombre) <= 12:
+            return nombre
+
+        nombre_lower = nombre.lower()
+
+        if nombre_lower.startswith("santo domingo"):
+            return "Sto. Domingo (Tsách.)"
+
+        # Regla general: iniciales
+        return " ".join([p[0] + "." for p in nombre.split()])
 
     # ======================================================
     # 1. VENTAS POR CIUDAD
@@ -275,6 +293,8 @@ def pestaña_4(df):
         .reset_index()
     )
 
+    ventas_estado["state_short"] = ventas_estado["state"].apply(abreviar_estado)
+
     top5 = ventas_estado.head(5)
     low5 = ventas_estado.tail(5)
 
@@ -282,30 +302,40 @@ def pestaña_4(df):
 
     col1, col2 = st.columns(2)
 
+    # -------- TOP 5 --------
     fig_top = px.bar(
         top5,
-        x="state",
+        x="state_short",
         y="sales",
-        title="Estados con mayor volumen de ventas"
+        title="Estados con mayor volumen de ventas",
+        hover_data={"state": True, "state_short": False}
     )
+
     fig_top.update_layout(
         yaxis_range=[0, y_max],
         xaxis_title="Estado",
-        yaxis_title="Ventas"
+        yaxis_title="Ventas",
+        xaxis_tickangle=0
     )
+
     col1.plotly_chart(fig_top, use_container_width=True)
 
+    # -------- LOW 5 --------
     fig_low = px.bar(
         low5,
-        x="state",
+        x="state_short",
         y="sales",
-        title="Estados con menor volumen de ventas"
+        title="Estados con menor volumen de ventas",
+        hover_data={"state": True, "state_short": False}
     )
+
     fig_low.update_layout(
         yaxis_range=[0, y_max],
         xaxis_title="Estado",
-        yaxis_title="Ventas"
+        yaxis_title="Ventas",
+        xaxis_tickangle=0
     )
+
     col2.plotly_chart(fig_low, use_container_width=True)
 
     st.markdown("---")
