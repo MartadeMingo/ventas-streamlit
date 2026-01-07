@@ -25,23 +25,28 @@ st.set_page_config(
 )
 
 # ========================================================
+# PALETA MORADO → AZUL (SOLO PARA 3 GRÁFICAS)
+# ========================================================
+PALETA_MORADO_AZUL = [
+    "#4B0082",
+    "#5F4B8B",
+    "#6A5ACD",
+    "#4682B4",
+    "#5DADE2"
+]
+
+# ========================================================
 # FUNCIÓN PARA CARGAR LOS DATOS
 # ========================================================
-import glob
-import pandas as pd
-import streamlit as st
-
 @st.cache_data
 def cargar_datos():
-    # Buscar todos los CSV que empiecen por "parte_1_parte" y "parte_2_parte"
     archivos_1 = sorted(glob.glob("parte_1_parte*.csv"))
     archivos_2 = sorted(glob.glob("parte_2_parte*.csv"))
-    
-    archivos = archivos_1 + archivos_2  # Concatenar ambos grupos
+    archivos = archivos_1 + archivos_2
 
     if not archivos:
         st.error("No se encontraron archivos CSV 'parte_1_parte*' o 'parte_2_parte*' en la carpeta.")
-        return pd.DataFrame()  # Retornar DF vacío
+        return pd.DataFrame()
 
     dfs = []
     for archivo in archivos:
@@ -56,7 +61,6 @@ def cargar_datos():
     df = pd.concat(dfs, ignore_index=True)
     df = df.sort_values("date")
 
-    # Crear columnas auxiliares
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
     df["week"] = df["date"].dt.isocalendar().week
@@ -75,7 +79,6 @@ if df.empty:
 # ========================================================
 # PESTAÑA 1 — VISIÓN GLOBAL
 # ========================================================
-
 def pestaña_1(df):
     st.title("📊 Visión Global de Ventas")
     st.subheader("📌 Indicadores generales")
@@ -99,13 +102,17 @@ def pestaña_1(df):
         .head(10)
         .reset_index()
     )
+
     fig1 = px.bar(
         top10_prod,
         x="sales",
         y="family",
         orientation="h",
         title="Top 10 Familias más vendidas",
+        color="sales",
+        color_continuous_scale=PALETA_MORADO_AZUL
     )
+    fig1.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig1, use_container_width=True)
 
     # ========== VENTAS POR TIENDA ==========
@@ -116,6 +123,7 @@ def pestaña_1(df):
         .reset_index()
         .sort_values("sales", ascending=False)
     )
+
     fig2 = px.bar(
         ventas_tienda,
         x="store_nbr",
@@ -127,6 +135,7 @@ def pestaña_1(df):
     # ========== TOP TIENDAS EN PROMOCIÓN ==========
     st.subheader("🏷️ Top 10 tiendas con ventas en productos en promoción")
     df_promo = df[df["onpromotion"] > 0]
+
     top10_tiendas_promo = (
         df_promo.groupby("store_nbr")["sales"]
         .sum()
@@ -134,48 +143,72 @@ def pestaña_1(df):
         .reset_index()
         .sort_values("sales")
     )
+
     top10_tiendas_promo["rank"] = range(1, len(top10_tiendas_promo) + 1)
+
     fig3 = px.bar(
         top10_tiendas_promo,
         x="sales",
         y="rank",
         orientation="h",
         title="Top 10 tiendas con ventas en promoción",
+        color="sales",
+        color_continuous_scale=PALETA_MORADO_AZUL
     )
+
     fig3.update_yaxes(
         ticktext=top10_tiendas_promo["store_nbr"],
         tickvals=top10_tiendas_promo["rank"]
     )
+    fig3.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig3, use_container_width=True)
 
     # ========== ESTACIONALIDAD ==========
     st.subheader("📅 Estacionalidad de las ventas")
+
     ventas_dias = (
         df.groupby("day_of_week")["sales"]
         .mean()
         .reindex(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
         .reset_index()
     )
-    fig4 = px.bar(ventas_dias, x="day_of_week", y="sales", title="Ventas promedio por día")
+
+    fig4 = px.bar(
+        ventas_dias,
+        x="day_of_week",
+        y="sales",
+        title="Ventas promedio por día"
+    )
     st.plotly_chart(fig4, use_container_width=True)
 
     ventas_week = df.groupby("week")["sales"].mean().reset_index()
-    fig5 = px.line(ventas_week, x="week", y="sales", markers=True, title="Ventas promedio por semana del año")
+    fig5 = px.line(
+        ventas_week,
+        x="week",
+        y="sales",
+        markers=True,
+        title="Ventas promedio por semana del año"
+    )
     st.plotly_chart(fig5, use_container_width=True)
 
     ventas_month = df.groupby("month")["sales"].mean().reset_index()
-    fig6 = px.bar(ventas_month, x="month", y="sales", title="Ventas promedio por mes")
+    fig6 = px.bar(
+        ventas_month,
+        x="month",
+        y="sales",
+        title="Ventas promedio por mes"
+    )
     st.plotly_chart(fig6, use_container_width=True)
 
 # ========================================================
 # PESTAÑA 2 — ANÁLISIS POR TIENDA
 # ========================================================
-
 def pestaña_2(df):
     st.title("🏬 Análisis por Tienda")
     tiendas = sorted(df["store_nbr"].unique())
     tienda_sel = st.selectbox("Selecciona una tienda:", tiendas)
     df_tienda = df[df["store_nbr"] == tienda_sel]
+
     st.markdown(f"### Resultados para la tienda **{tienda_sel}**")
 
     col1, col2 = st.columns(2)
@@ -187,34 +220,56 @@ def pestaña_2(df):
 
     st.markdown("---")
     st.subheader("📈 Ventas totales por año")
+
     ventas_año = df_tienda.groupby("year")["sales"].sum().sort_index().reset_index()
-    fig1 = px.bar(ventas_año, x="year", y="sales")
+
+    fig1 = px.bar(
+        ventas_año,
+        x="year",
+        y="sales",
+        color="sales",
+        color_continuous_scale=PALETA_MORADO_AZUL
+    )
+    fig1.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig1, use_container_width=True)
 
 # ========================================================
 # PESTAÑA 3 — ANÁLISIS POR ESTADO
 # ========================================================
-
 def pestaña_3(df):
     st.title("🗺️ Análisis por Estado")
     estados = sorted(df["state"].unique())
     estado_sel = st.selectbox("Selecciona un estado:", estados)
     df_estado = df[df["state"] == estado_sel]
+
     st.markdown(f"### Resultados para el estado **{estado_sel}**")
 
     st.subheader("💳 Transacciones por año")
     transacciones_año = df_estado.groupby("year")["transactions"].sum().reset_index()
-    fig1 = px.line(transacciones_año, x="year", y="transactions", markers=True)
+
+    fig1 = px.line(
+        transacciones_año,
+        x="year",
+        y="transactions",
+        markers=True
+    )
     st.plotly_chart(fig1, use_container_width=True)
 
     st.subheader("🏬 Ranking de tiendas con más ventas")
-    ranking_tiendas = df_estado.groupby("store_nbr")["sales"].sum().sort_values(ascending=False).reset_index()
+    ranking_tiendas = (
+        df_estado.groupby("store_nbr")["sales"]
+        .sum()
+        .sort_values(ascending=False)
+        .reset_index()
+    )
     ranking_tiendas["rank"] = range(1, len(ranking_tiendas) + 1)
+
     fig2 = px.bar(
         ranking_tiendas,
         x="rank",
-        y="sales",
+        y="sales"
     )
+
     fig2.update_xaxes(
         tickvals=ranking_tiendas["rank"],
         ticktext=ranking_tiendas["store_nbr"],
@@ -224,7 +279,13 @@ def pestaña_3(df):
     st.plotly_chart(fig2, use_container_width=True)
 
     st.subheader("🥇 Producto más vendido")
-    prod_top = df_estado.groupby("family")["sales"].sum().sort_values(ascending=False).reset_index().iloc[0]
+    prod_top = (
+        df_estado.groupby("family")["sales"]
+        .sum()
+        .sort_values(ascending=False)
+        .reset_index()
+        .iloc[0]
+    )
     st.metric("Producto más vendido", prod_top["family"])
 
     fig3 = px.bar(
@@ -235,12 +296,10 @@ def pestaña_3(df):
     )
     st.plotly_chart(fig3, use_container_width=True)
 
-
 # ========================================================
 # PESTAÑA 4 — INSIGHTS PARA EL CEO
 # ========================================================
 def pestaña_4(df):
-
     import streamlit as st
     import plotly.express as px
 
@@ -250,64 +309,43 @@ def pestaña_4(df):
         "Panel ejecutivo orientado a la toma de decisiones estratégicas del CEO y del Director de Ventas."
     )
 
-    # ======================================================
-    # FUNCIÓN PARA ABREVIAR NOMBRES DE ESTADOS
-    # ======================================================
     def abreviar_estado(nombre):
         if len(nombre) <= 12:
             return nombre
-
         nombre_lower = nombre.lower()
-
         if nombre_lower.startswith("santo domingo"):
             return "Sto. Domingo (Tsách.)"
-
-        # Regla general: iniciales
         return " ".join([p[0] + "." for p in nombre.split()])
 
-    # ======================================================
-    # 1. VENTAS POR CIUDAD
-    # ======================================================
     st.subheader("🌆 Ventas por ciudad")
-
     ventas_ciudad = df.groupby("city")["sales"].sum().reset_index()
-
-    fig_city = px.treemap(
-        ventas_ciudad,
-        path=["city"],
-        values="sales"
-    )
+    fig_city = px.treemap(ventas_ciudad, path=["city"], values="sales")
     st.plotly_chart(fig_city, use_container_width=True)
 
     st.markdown("---")
 
-    # ======================================================
-    # 2. ESTADOS CON MAYOR Y MENOR VOLUMEN DE VENTAS
-    # ======================================================
     st.subheader("🗺️ Estados con mayor y menor volumen de ventas")
-
     ventas_estado = (
         df.groupby("state")["sales"]
         .sum()
         .sort_values(ascending=False)
         .reset_index()
     )
-
     ventas_estado["state_short"] = ventas_estado["state"].apply(abreviar_estado)
 
     top5 = ventas_estado.head(5)
     low5 = ventas_estado.tail(5)
-
     y_max = ventas_estado["sales"].max()
 
     col1, col2 = st.columns(2)
 
-    # -------- TOP 5 --------
     fig_top = px.bar(
         top5,
         x="state_short",
         y="sales",
         title="Estados con mayor volumen de ventas",
+        color="sales",
+        color_continuous_scale=PALETA_MORADO_AZUL,
         hover_data={"state": True, "state_short": False}
     )
 
@@ -315,17 +353,18 @@ def pestaña_4(df):
         yaxis_range=[0, y_max],
         xaxis_title="Estado",
         yaxis_title="Ventas",
-        xaxis_tickangle=0
+        coloraxis_showscale=False
     )
 
     col1.plotly_chart(fig_top, use_container_width=True)
 
-    # -------- LOW 5 --------
     fig_low = px.bar(
         low5,
         x="state_short",
         y="sales",
         title="Estados con menor volumen de ventas",
+        color="sales",
+        color_continuous_scale=PALETA_MORADO_AZUL,
         hover_data={"state": True, "state_short": False}
     )
 
@@ -333,25 +372,20 @@ def pestaña_4(df):
         yaxis_range=[0, y_max],
         xaxis_title="Estado",
         yaxis_title="Ventas",
-        xaxis_tickangle=0
+        coloraxis_showscale=False
     )
 
     col2.plotly_chart(fig_low, use_container_width=True)
 
     st.markdown("---")
 
-    # ======================================================
-    # 3. CONCENTRACIÓN DE VENTAS POR TIENDAS (PARETO)
-    # ======================================================
     st.subheader("🏬 Concentración de ventas por tiendas (Principio 80/20)")
-
     ventas_tienda = (
         df.groupby("store_nbr")["sales"]
         .sum()
         .sort_values(ascending=False)
         .reset_index()
     )
-
     ventas_tienda["ventas_acumuladas"] = ventas_tienda["sales"].cumsum()
     ventas_tienda["porcentaje_acumulado"] = (
         ventas_tienda["ventas_acumuladas"] / ventas_tienda["sales"].sum() * 100
@@ -362,41 +396,25 @@ def pestaña_4(df):
         x=ventas_tienda.index + 1,
         y="porcentaje_acumulado",
         markers=True,
-        labels={
-            "x": "Número de tiendas",
-            "porcentaje_acumulado": "% de ventas acumuladas"
-        },
         title="¿Cuántas tiendas generan el 80% de las ventas?"
     )
-
     fig_pareto.add_hline(
         y=80,
         line_dash="dash",
         line_color="red",
-        annotation_text="80% de las ventas",
-        annotation_position="bottom right"
+        annotation_text="80% de las ventas"
     )
-
     st.plotly_chart(fig_pareto, use_container_width=True)
 
     st.markdown("---")
 
-    # ======================================================
-    # 4. IMPACTO DE LAS PROMOCIONES
-    # ======================================================
     st.subheader("🏷️ Impacto de las promociones en las ventas")
-
     promo_df = df.assign(
         tipo_venta=df["onpromotion"].apply(
             lambda x: "En promoción" if x > 0 else "Sin promoción"
         )
     )
-
-    ventas_promo = (
-        promo_df.groupby("tipo_venta")["sales"]
-        .mean()
-        .reset_index()
-    )
+    ventas_promo = promo_df.groupby("tipo_venta")["sales"].mean().reset_index()
 
     fig_promo = px.bar(
         ventas_promo,
@@ -408,26 +426,14 @@ def pestaña_4(df):
 
     st.markdown("---")
 
-    # ======================================================
-    # 5. EVOLUIÓN Y CRECIMIENTO INTERANUAL
-    # ======================================================
     st.subheader("📈 Evolución y crecimiento interanual de ventas")
-
-    ventas_year = (
-        df.groupby("year")["sales"]
-        .sum()
-        .reset_index()
-    )
-
-    # 🔴 CLAVE: asegurar tipo numérico y orden correcto
+    ventas_year = df.groupby("year")["sales"].sum().reset_index()
     ventas_year["year"] = ventas_year["year"].astype(int)
     ventas_year = ventas_year.sort_values("year")
-
     ventas_year["crecimiento_%"] = ventas_year["sales"].pct_change() * 100
 
     col1, col2 = st.columns(2)
 
-    # -------- Ventas por año --------
     fig_sales = px.line(
         ventas_year,
         x="year",
@@ -435,30 +441,15 @@ def pestaña_4(df):
         markers=True,
         title="Ventas totales por año"
     )
-
-    fig_sales.update_layout(
-        xaxis_title="Año",
-        yaxis_title="Ventas",
-        xaxis=dict(type="linear")  # 👈 fuerza eje continuo
-    )
-
     col1.plotly_chart(fig_sales, use_container_width=True)
 
-    # -------- Crecimiento interanual --------
     fig_growth = px.bar(
         ventas_year.dropna(),
         x="year",
         y="crecimiento_%",
         title="Crecimiento interanual (%)"
     )
-
-    fig_growth.update_layout(
-        xaxis_title="Año",
-        yaxis_title="Crecimiento %",
-    )
-
     col2.plotly_chart(fig_growth, use_container_width=True)
-
 
 # ========================================================
 # CREAR LAS PESTAÑAS
@@ -470,7 +461,11 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🚀 CEO Insights"
 ])
 
-with tab1: pestaña_1(df)
-with tab2: pestaña_2(df)
-with tab3: pestaña_3(df)
-with tab4: pestaña_4(df)
+with tab1:
+    pestaña_1(df)
+with tab2:
+    pestaña_2(df)
+with tab3:
+    pestaña_3(df)
+with tab4:
+    pestaña_4(df)
