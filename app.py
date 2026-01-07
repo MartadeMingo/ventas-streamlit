@@ -29,26 +29,46 @@ st.set_page_config(
 # ============================================
 # FUNCIÓN PARA CARGAR LOS DATOS DESDE ONEDRIVE
 # ============================================
+
+import gdown
+import pandas as pd
+import streamlit as st
+
 @st.cache_data
 def cargar_datos():
+    # Enlaces gdown
+    url_parte_1 = "https://drive.google.com/uc?id=15mT4W0wzB0z-RAINsaCOQTSysB5uOe9x"
+    url_parte_2 = "https://drive.google.com/uc?id=1xNusnLXVuRnZj_znJhvvvuwAe9lbMvar"
 
-    url_parte_1 = "https://drive.google.com/file/d/15mT4W0wzB0z-RAINsaCOQTSysB5uOe9x/view?usp=sharing"
-    url_parte_2 = "https://drive.google.com/file/d/1xNusnLXVuRnZj_znJhvvvuwAe9lbMvar/view?usp=sharing"
+    # Descarga los archivos si no existen localmente
+    archivo1 = "parte_1.csv"
+    archivo2 = "parte_2.csv"
 
-    df1 = pd.read_excel(url_parte_1, parse_dates=["date"])
-    df2 = pd.read_excel(url_parte_2, parse_dates=["date"])
+    gdown.download(url_parte_1, archivo1, quiet=False)
+    gdown.download(url_parte_2, archivo2, quiet=False)
 
+    # Leer CSV
+    df1 = pd.read_csv(archivo1, sep=";", engine="python")
+    df2 = pd.read_csv(archivo2, sep=";", engine="python")
+
+    # Normalizar nombres de columnas
+    df1.columns = df1.columns.str.strip().str.lower()
+    df2.columns = df2.columns.str.strip().str.lower()
+
+    # Concatenar
     df = pd.concat([df1, df2], ignore_index=True)
+
+    if "unnamed: 0" in df.columns:
+        df = df.drop(columns=["unnamed: 0"])
+
+    # Convertir fechas
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.sort_values("date")
-
-    df["year"] = df["date"].dt.year
-    df["month"] = df["date"].dt.month
-    df["week"] = df["date"].dt.isocalendar().week
-    df["day_of_week"] = df["date"].dt.day_name()
-
     df["onpromotion"] = df["onpromotion"].fillna(0).astype(int)
 
     return df
+
+
 
 
 
